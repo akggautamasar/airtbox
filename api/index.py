@@ -255,8 +255,20 @@ def process_terabox_url(url):
     
     # Check if valid file list exists
     if 'list' not in response_data2 or not response_data2['list']:
-        logger.error("No files found in API response")
-        raise Exception("No files found in shared link")
+        errno = response_data2.get('errno')
+        errmsg = response_data2.get('errmsg', '')
+        # Map common TeraBox error codes to human-readable hints
+        errno_hints = {
+            0: "errno 0 but empty list — link may be a folder with no files, or region-locked",
+            2: "errno 2 — parameter error / session not recognized (cookie likely invalid for this domain)",
+            -9: "errno -9 — share link is invalid, expired, or deleted",
+            -6: "errno -6 — login/identity verification failed (ndus cookie invalid or expired)",
+            -7: "errno -7 — file/share access forbidden",
+            105: "errno 105 — link format not recognized",
+        }
+        hint = errno_hints.get(errno, f"errno {errno}")
+        logger.error(f"share/list empty. errno={errno} errmsg={errmsg}")
+        raise Exception(f"No files returned. TeraBox said: {hint}. errmsg='{errmsg}'")
     
     file_list = response_data2['list']
     logger.info(f"Found {len(file_list)} files")
